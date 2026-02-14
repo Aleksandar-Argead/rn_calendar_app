@@ -1,31 +1,48 @@
-import React, { useEffect } from 'react';
+// src/navigation/RootNavigator.tsx
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import SplashScreen from '@/screens/SplashScreen';
+import { useStore } from '@/store';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuthStore } from '../stores/authStore';
-import AuthStack from './AuthStack';
-import MainTabNavigator from './MainTabNavigator';
+import { getAuth } from '@react-native-firebase/auth';
+import Login from '@/screens/Login/Login';
 
-const Stack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
 
-const RootNavigator = () => {
-  const { user, status } = useAuthStore();
-
-  // Simulate checking auth state on app start (you will replace with Firebase listener later)
+export default function RootNavigator() {
   useEffect(() => {
-    // TODO: later add onAuthStateChanged listener here
+    // Listen to Firebase auth changes → update store
+    const subscriber = getAuth().onAuthStateChanged(firebaseUser => {
+      if (firebaseUser) {
+        useStore.setState({
+          user: {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+          },
+          isLoading: false,
+        });
+      } else {
+        useStore.setState({
+          user: null,
+          isLoading: false,
+        });
+      }
+    });
+
+    return subscriber; // unsubscribe on unmount
   }, []);
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user && status === 'authenticated' ? (
-          <Stack.Screen name="Main" component={MainTabNavigator} />
-        ) : (
-          <Stack.Screen name="Auth" component={AuthStack} />
-        )}
-      </Stack.Navigator>
+      <RootStack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{ headerShown: false }}
+      >
+        <RootStack.Screen name="Splash" component={SplashScreen} />
+        <RootStack.Screen name="Login" component={Login} />
+
+        {/*{user ? <View /> : <AuthStack />}*/}
+      </RootStack.Navigator>
     </NavigationContainer>
   );
-};
-
-export default RootNavigator;
+}
