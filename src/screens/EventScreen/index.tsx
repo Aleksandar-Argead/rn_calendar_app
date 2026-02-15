@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,46 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
-import { format } from 'date-fns';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { format, parseISO } from 'date-fns';
 import { useStore } from '@/store';
 
-export default function NewEventScreen() {
+export default function EventScreen() {
   const navigation = useNavigation<any>();
-  const { createEvent, selectedDate } = useStore();
+  const route = useRoute<any>();
+  const { createEvent, updateEvent, deleteEvent, events } = useStore(); // assuming store has these + events array
 
-  const [title, setTitle] = useState('');
-  const [dateTime, setDateTime] = useState(selectedDate ?? new Date());
-  const [location, setLocation] = useState('');
-  const [description, setDescription] = useState('');
+  const eventId = route.params?.eventId as string | undefined;
+
+  const existingEvent = eventId
+    ? events.find((e: any) => e.id === eventId)
+    : null;
+
+  const isEditMode = !!eventId && !!existingEvent;
+
+  const initialDateTime = isEditMode
+    ? parseISO(existingEvent.start) // assuming you store ISO string in 'start'
+    : (route.params?.selectedDate ?? new Date());
+
+  const [title, setTitle] = useState(isEditMode ? existingEvent.title : '');
+  const [dateTime, setDateTime] = useState(initialDateTime);
+  const [location, setLocation] = useState(
+    isEditMode ? existingEvent.location : '',
+  );
+  const [description, setDescription] = useState(
+    isEditMode ? existingEvent.description : '',
+  );
   const [titleError, setTitleError] = useState(false);
 
-  const handleCreate = () => {
+  // Optional: reset error when title changes
+  useEffect(() => {
+    if (title.trim()) setTitleError(false);
+  }, [title]);
+
+  const handleSave = () => {
     if (!title.trim()) {
       setTitleError(true);
       return;
@@ -39,8 +62,29 @@ export default function NewEventScreen() {
       description: description.trim(),
     };
 
-    createEvent(eventData);
-    navigation.goBack();
+    if (isEditMode) {
+      updateEvent(eventId, eventData);
+      Alert.alert('Success', 'Event updated', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      createEvent(eventData);
+      navigation.goBack();
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert('Delete Event', 'Are you sure you want to delete this event?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          deleteEvent(eventId);
+          navigation.goBack();
+        },
+      },
+    ]);
   };
 
   const onDateChange = (_event: any, selected?: Date) => {
@@ -51,12 +95,14 @@ export default function NewEventScreen() {
 
   const onTimeChange = (_event: any, selected?: Date) => {
     if (selected) {
-      // Keep the date part, only update time
       const newDate = new Date(dateTime);
       newDate.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
       setDateTime(newDate);
     }
   };
+
+  const screenTitle = isEditMode ? 'Edit Event' : 'New Event';
+  const primaryButtonText = isEditMode ? 'Update' : 'Create';
 
   return (
     <KeyboardAvoidingView
@@ -64,22 +110,18 @@ export default function NewEventScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>New Event</Text>
+        <Text style={styles.title}>{screenTitle}</Text>
 
         <TextInput
           style={[styles.input, titleError && styles.inputError]}
           placeholder="Event Title *"
           value={title}
-          onChangeText={text => {
-            setTitle(text);
-            setTitleError(false);
-          }}
+          onChangeText={setTitle}
           autoFocus
           placeholderTextColor="#999"
         />
         {titleError && <Text style={styles.errorText}>Title is required</Text>}
 
-        {/* Date + Time pickers side by side */}
         <View style={styles.pickerRow}>
           <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>Date</Text>
@@ -124,16 +166,40 @@ export default function NewEventScreen() {
         />
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.buttonTextCancel}>Cancel</Text>
-          </TouchableOpacity>
+          {isEditMode ? (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.buttonTextCancel}>Cancel</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleCreate}>
-            <Text style={styles.buttonTextCreate}>Create</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.deleteButton]}
+                onPress={handleDelete}
+              >
+                <Text style={styles.buttonTextDelete}>Delete</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.button} onPress={handleSave}>
+                <Text style={styles.buttonTextCreate}>{primaryButtonText}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.buttonTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.button} onPress={handleSave}>
+                <Text style={styles.buttonTextCreate}>{primaryButtonText}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -202,11 +268,6 @@ const styles = StyleSheet.create({
     minHeight: 120,
     textAlignVertical: 'top',
   },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 32,
-  },
   button: {
     flex: 1,
     paddingVertical: 16,
@@ -227,5 +288,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#007AFF',
+  },
+
+  deleteButton: {
+    backgroundColor: '#ff3b30',
+    marginHorizontal: 4,
+  },
+
+  buttonTextDelete: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 32,
+    gap: 8,
   },
 });

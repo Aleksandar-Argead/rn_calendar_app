@@ -8,12 +8,14 @@ import {
 } from 'react-native';
 import { format, isSameDay } from 'date-fns';
 import { useStore } from '@/store';
+import { useNavigation } from '@react-navigation/native';
 
 type Props = {
   selectedDate: Date;
 };
 
 export function EventList({ selectedDate }: Props) {
+  const navigation = useNavigation<any>();
   const { events } = useStore();
 
   const selectedDayEvents = events.filter(event => {
@@ -21,6 +23,10 @@ export function EventList({ selectedDate }: Props) {
       event.start instanceof Date ? event.start : new Date(event.start);
     return isSameDay(eventDate, selectedDate);
   });
+
+  const handleEventPress = (eventId: string) => {
+    navigation.navigate('EventScreen', { eventId });
+  };
 
   return (
     <View style={styles.eventsSection}>
@@ -37,7 +43,10 @@ export function EventList({ selectedDate }: Props) {
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.eventItem}>
+          <TouchableOpacity
+            onPress={() => handleEventPress(item.id)}
+            style={styles.eventItem}
+          >
             <View style={styles.eventTimeContainer}>
               <Text style={styles.eventTime}>
                 {format(new Date(item.start), 'HH:mm')}

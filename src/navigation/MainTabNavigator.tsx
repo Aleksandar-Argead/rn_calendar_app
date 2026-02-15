@@ -20,7 +20,7 @@ export function MainTabNavigator() {
     return (
       <TouchableOpacity
         onPress={() => {
-          navigation.navigate('NewEvent');
+          navigation.navigate('EventScreen');
         }}
         style={{ marginLeft: 16 }}
       >

@@ -7,7 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MainTabNavigator } from './MainTabNavigator';
 import RegisterScreen from '@/screens/RegisterScreen';
 import LoginScreen from '@/screens/LoginScreen';
-import NewEventScreen from '@/screens/NewEventScreen';
+import EventScreen from '@/screens/EventScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -28,13 +28,7 @@ export default function RootNavigator() {
         <RootStack.Screen name="Register" component={RegisterScreen} />
         <RootStack.Screen name="Main" component={MainTabNavigator} />
         <RootStack.Group screenOptions={{ presentation: 'modal' }}>
-          <RootStack.Screen
-            name="NewEvent"
-            component={NewEventScreen}
-            options={{
-              headerShown: false,
-            }}
-          />
+          <RootStack.Screen name="EventScreen" component={EventScreen} />
         </RootStack.Group>
       </RootStack.Navigator>
     </NavigationContainer>
