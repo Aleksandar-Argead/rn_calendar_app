@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      // The user can read/write their entire subtree (profile data + subcollections like events)
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Explicit deny-all for any path not matched above (optional but clearer)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
