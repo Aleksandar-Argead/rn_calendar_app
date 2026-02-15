@@ -111,6 +111,8 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          submitBehavior="blurAndSubmit"
+          returnKeyType="done"
           autoCorrect={false}
           placeholderTextColor="#999"
         />
@@ -122,6 +124,7 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
           autoCapitalize="none"
+          returnKeyType="done"
           placeholderTextColor="#999"
         />
 

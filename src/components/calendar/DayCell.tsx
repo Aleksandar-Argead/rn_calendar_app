@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { isToday } from 'date-fns';
 
 type Props = {
-  date: Date | null; // null = padding day from prev/next month
+  date: Date | null;
   isCurrentMonth: boolean;
   hasEvents: boolean;
   isSelected: boolean;

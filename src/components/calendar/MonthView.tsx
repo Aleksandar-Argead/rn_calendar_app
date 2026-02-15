@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import {
   startOfMonth,
   endOfMonth,
@@ -7,6 +7,7 @@ import {
   startOfWeek,
   endOfWeek,
   isSameMonth,
+  format,
 } from 'date-fns';
 import { DayCell } from './DayCell';
 import { WeekdaysHeader } from './WeekdaysHeader';
@@ -37,7 +38,9 @@ export function MonthView({
     weeks.push(days.slice(i, i + 7));
   }
 
-  const daysWithEvents = new Set(events.map(e => e.start.split('T')[0]));
+  const daysWithEvents = new Set(
+    events.map(e => format(new Date(e.start), 'yyyy-MM-dd')),
+  );
 
   return (
     <View style={styles.container}>
@@ -53,7 +56,7 @@ export function MonthView({
                 isSameMonth(day, selectedDate) &&
                 day.getDate() === selectedDate.getDate()
               }
-              hasEvents={daysWithEvents.has(day.toISOString().split('T')[0])}
+              hasEvents={daysWithEvents.has(format(day, 'yyyy-MM-dd'))}
               onPress={onDayPress}
             />
           ))}

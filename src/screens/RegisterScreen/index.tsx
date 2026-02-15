@@ -60,26 +60,15 @@ export default function RegisterScreen() {
 
     const signupSuccess = await signUpWithEmail(email.trim(), password);
 
-    if (!signupSuccess) {
-      setFieldErrors({
-        general: authError || 'Sign up failed. Please try again.',
-      });
+    if (signupSuccess) {
+      navigation.navigate('Main');
+
       return;
     }
 
-    // Auto-login
-    const loginSuccess = await signInWithEmail(email.trim(), password);
-
-    if (loginSuccess) {
-      navigation.replace('Main');
-    } else {
-      // Rare case: account created but auto-login failed
-      setFieldErrors({
-        general:
-          'Account created, but auto-login failed.\nPlease sign in manually.',
-      });
-      // Optionally navigate after delay or let user click link
-    }
+    setFieldErrors({
+      general: authError || 'Sign up failed. Please try again.',
+    });
   };
 
   const getInputStyle = (field: 'email' | 'password' | 'confirmPassword') => [
@@ -164,9 +153,6 @@ export default function RegisterScreen() {
   );
 }
 
-// ──────────────────────────────────────────────
-// Styles (added error styles)
-// ──────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -189,7 +175,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    marginBottom: 4, // reduced to give space for error
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },

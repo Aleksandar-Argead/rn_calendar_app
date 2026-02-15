@@ -4,6 +4,7 @@ import * as Keychain from 'react-native-keychain';
 import {
   getFirestore,
   serverTimestamp,
+  DocumentData,
 } from '@react-native-firebase/firestore';
 import { parseISO } from 'date-fns';
 
@@ -11,16 +12,15 @@ export type User = {
   uid: string;
   email: string | null;
   creationDate: Date | null;
-  // you can add displayName, photoURL etc. later if needed
+  // Add more fields from Firestore if needed, e.g. displayName?: string;
 };
 
 export interface AuthSlice {
-  // ── state ────────────────────────────────────────────────
   user: User | null;
-  isLoading: boolean;
+  isLoading: boolean; // General loading (sign in/out, etc.)
+  isAuthReady: boolean; // ← NEW: Firebase auth listener has fired at least once
   authError: string | null;
 
-  // ── actions ──────────────────────────────────────────────
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -29,247 +29,223 @@ export interface AuthSlice {
   signUpWithEmail: (email: string, password: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 
-  // Biometrics
+  // Biometrics (use cautiously — storing password is not ideal)
   hasBiometricCredentials: () => Promise<boolean>;
   saveBiometricCredentials: (
     email: string,
     password: string,
   ) => Promise<boolean>;
   loginWithBiometrics: () => Promise<boolean>;
-  logout: () => void;
-  initializeAuthListener: () => () => void;
+
+  // Call this once at app root (e.g. in RootNavigator useEffect)
+  subscribeToAuthChanges: () => () => void;
+
+  // Optional: load extra profile data from Firestore
+  fetchUserProfile: () => Promise<void>;
 }
 
-// ── slice creator ───────────────────────────────────────────
-export const createAuthSlice: StateCreator<AuthSlice> = (set, _get) => {
-  let unsubscribeAuth: (() => void) | null = null;
-
-  const updateUserFromFirebase = (
-    firebaseUser: FirebaseAuthTypes.User | null,
-  ) => {
-    if (firebaseUser) {
-      set({
-        user: {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          creationDate: firebaseUser.metadata.creationTime
-            ? parseISO(firebaseUser.metadata.creationTime)
-            : null,
-        },
-        isLoading: false,
-        authError: null,
-      });
-    } else {
-      set({
-        user: null,
-        isLoading: false,
-        authError: null,
-      });
-    }
-  };
+// Helper to map Firebase user → your User type
+const mapFirebaseUser = (
+  fbUser: FirebaseAuthTypes.User | null,
+): User | null => {
+  if (!fbUser) return null;
   return {
-    user: null,
-    isLoading: true,
-    authError: null,
-
-    setUser: user => set({ user }),
-    setLoading: isLoading => set({ isLoading }),
-    setError: error => set({ authError: error }),
-
-    signInWithEmail: async (email, password) => {
-      set({ isLoading: true, authError: null });
-      try {
-        console.log(email, password);
-        const credential = await auth().signInWithEmailAndPassword(
-          email,
-          password,
-        );
-        const user = credential.user;
-        set({
-          user: {
-            uid: user.uid,
-            email: user.email,
-            creationDate: user.metadata.creationTime
-              ? parseISO(user?.metadata?.creationTime)
-              : null,
-          },
-          isLoading: false,
-        });
-        return true;
-      } catch (err: any) {
-        console.log(err.message);
-        const msg = 'Sign in failed';
-        set({ authError: msg, isLoading: false });
-        return false;
-      }
-    },
-
-    fetchUser: async () => {
-      const currentUser = auth().currentUser;
-      if (!currentUser) {
-        set({ user: null, isLoading: false });
-        return false;
-      }
-
-      try {
-        const doc = await getFirestore()
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-
-        if (!doc.exists) {
-          // Document doesn't exist yet → create minimal one (optional)
-          await getFirestore().collection('users').doc(currentUser.uid).set(
-            {
-              email: currentUser.email,
-              createdAt: serverTimestamp(),
-            },
-            { merge: true },
-          );
-
-          // Re-fetch
-          const newDoc = await getFirestore()
-            .collection('users')
-            .doc(currentUser.uid)
-            .get();
-
-          set({
-            user: {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              ...newDoc.data(),
-            } as User,
-            isLoading: false,
-          });
-          return true;
-        }
-
-        set({
-          user: {
-            uid: currentUser.uid,
-            email: currentUser.email,
-            ...doc.data(),
-          } as User,
-          isLoading: false,
-        });
-        return true;
-      } catch (err: any) {
-        console.error('fetchUser error:', err);
-        set({
-          authError: 'Failed to load user profile',
-          isLoading: false,
-        });
-        return false;
-      }
-    },
-
-    signUpWithEmail: async (email, password) => {
-      set({ isLoading: true, authError: null });
-      try {
-        const credential = await auth().createUserWithEmailAndPassword(
-          email,
-          password,
-        );
-        const user = credential.user;
-        set({
-          user: { uid: user.uid, email: user.email, creationDate: null },
-          isLoading: false,
-        });
-        return true;
-      } catch (err: any) {
-        const msg = err.message || 'Sign up failed';
-        set({ authError: msg, isLoading: false });
-        return false;
-      }
-    },
-
-    signOut: async () => {
-      set({ isLoading: true });
-      try {
-        await auth().signOut();
-        await Keychain.resetGenericPassword();
-        set({ user: null, isLoading: false, authError: null });
-      } catch (err: any) {
-        set({ authError: err.message || 'Sign out failed', isLoading: false });
-      }
-    },
-
-    hasBiometricCredentials: async () => {
-      try {
-        const credentials = await Keychain.getGenericPassword();
-        return !!credentials;
-      } catch {
-        return false;
-      }
-    },
-
-    saveBiometricCredentials: async (email, password) => {
-      try {
-        await Keychain.setGenericPassword(email, password, {
-          accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY, // or BIOMETRIC_CURRENT_SET
-          accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-
-    loginWithBiometrics: async () => {
-      set({ isLoading: true, authError: null });
-      try {
-        const credentials = await Keychain.getGenericPassword({
-          authenticationPrompt: {
-            title: 'Sign in',
-            subtitle: 'Use biometrics to continue',
-            description: ' ',
-            cancel: 'Use password instead',
-          },
-        });
-
-        if (!credentials) {
-          set({ isLoading: false });
-          return false;
-        }
-
-        const authCred = await auth().signInWithEmailAndPassword(
-          credentials.username,
-          credentials.password,
-        );
-        set({
-          user: {
-            uid: authCred.user.uid,
-            email: credentials.username,
-            creationDate: null,
-          },
-          isLoading: false,
-        });
-        return true;
-      } catch (err: any) {
-        set({
-          authError: err.message || 'Biometric login failed',
-          isLoading: false,
-        });
-        return false;
-      }
-    },
-    logout: async () => {
-      await auth().signOut();
-      set({
-        user: null,
-      });
-    },
-
-    initializeAuthListener: () => {
-      // Avoid double subscription
-      if (unsubscribeAuth) return unsubscribeAuth;
-
-      unsubscribeAuth = auth().onAuthStateChanged(user => {
-        console.log('Auth state changed →', user ? 'logged in' : 'logged out');
-        updateUserFromFirebase(user);
-      });
-
-      return unsubscribeAuth;
-    },
+    uid: fbUser.uid,
+    email: fbUser.email,
+    creationDate: fbUser.metadata.creationTime
+      ? parseISO(fbUser.metadata.creationTime)
+      : null,
   };
 };
+
+export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
+  user: null,
+  isLoading: true,
+  isAuthReady: false,
+  authError: null,
+
+  setUser: user => set({ user }),
+  setLoading: isLoading => set({ isLoading }),
+  setError: error => set({ authError: error }),
+
+  signInWithEmail: async (email, password) => {
+    set({ isLoading: true, authError: null });
+    try {
+      const { user: fbUser } = await auth().signInWithEmailAndPassword(
+        email,
+        password,
+      );
+      set({
+        user: mapFirebaseUser(fbUser),
+        isLoading: false,
+        authError: null,
+      });
+      // Optional: await get().fetchUserProfile();  // load Firestore data
+      return true;
+    } catch (err: any) {
+      const msg = err.code
+        ? `auth/${err.code.replace('auth/', '')}`
+        : 'Sign in failed';
+      set({ authError: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  signUpWithEmail: async (email, password) => {
+    set({ isLoading: true, authError: null });
+    try {
+      const { user: fbUser } = await auth().createUserWithEmailAndPassword(
+        email,
+        password,
+      );
+      set({
+        user: mapFirebaseUser(fbUser),
+        isLoading: false,
+        authError: null,
+      });
+      // Optional: create Firestore user doc here
+      await getFirestore().collection('users').doc(fbUser.uid).set(
+        {
+          email: fbUser.email,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return true;
+    } catch (err: any) {
+      const msg = err.code
+        ? `auth/${err.code.replace('auth/', '')}`
+        : 'Sign up failed';
+      set({ authError: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  signOut: async () => {
+    set({ isLoading: true, authError: null });
+    try {
+      await auth().signOut();
+      await Keychain.resetGenericPassword(); // clear biometrics if any
+      set({
+        user: null,
+        isLoading: false,
+        authError: null,
+      });
+    } catch (err: any) {
+      set({ authError: err.message || 'Sign out failed', isLoading: false });
+    }
+  },
+
+  // ── Biometrics ─────────────────────────────────────────────
+  hasBiometricCredentials: async () => {
+    try {
+      const creds = await Keychain.getGenericPassword();
+      return !!creds;
+    } catch {
+      return false;
+    }
+  },
+
+  saveBiometricCredentials: async (email, password) => {
+    try {
+      await Keychain.setGenericPassword(email, password, {
+        accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+        accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  loginWithBiometrics: async () => {
+    set({ isLoading: true, authError: null });
+    try {
+      const creds = await Keychain.getGenericPassword({
+        authenticationPrompt: {
+          title: 'Sign in',
+          subtitle: 'Use biometrics',
+          description: '',
+          cancel: 'Use password',
+        },
+      });
+      if (!creds?.username || !creds.password) {
+        set({ isLoading: false });
+        return false;
+      }
+      const { user: fbUser } = await auth().signInWithEmailAndPassword(
+        creds.username,
+        creds.password,
+      );
+      set({
+        user: mapFirebaseUser(fbUser),
+        isLoading: false,
+        authError: null,
+      });
+      return true;
+    } catch (err: any) {
+      set({
+        authError: err.message || 'Biometric login failed',
+        isLoading: false,
+      });
+      return false;
+    }
+  },
+
+  // ── Auth listener (call once at root level) ───────────────
+  subscribeToAuthChanges: () => {
+    const unsubscribe = auth().onAuthStateChanged(fbUser => {
+      if (fbUser) {
+        console.log(
+          'onAuthStateChanged →',
+          fbUser ? 'signed in' : 'signed out',
+        );
+        const mappedUser = mapFirebaseUser(fbUser);
+        set({
+          user: mappedUser,
+          isLoading: false,
+          isAuthReady: true,
+          authError: null,
+        });
+
+        // Optional: if signed in, load Firestore profile
+        if (mappedUser) {
+          get().fetchUserProfile();
+        }
+      }
+    });
+
+    return unsubscribe;
+  },
+
+  // Load extra Firestore data (call after auth confirms user)
+  fetchUserProfile: async () => {
+    const { user } = get();
+    if (!user) return;
+
+    try {
+      const doc = await getFirestore().collection('users').doc(user.uid).get();
+      if (doc.exists()) {
+        const data = doc.data() as DocumentData;
+        set({
+          user: {
+            ...user,
+            // merge any extra fields, e.g. displayName: data.displayName,
+          },
+        });
+      } else {
+        // Optional: create default doc
+        await getFirestore().collection('users').doc(user.uid).set(
+          {
+            email: user.email,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+    } catch (err) {
+      console.error('fetchUserProfile failed:', err);
+      // Optionally set error, but don't block auth
+    }
+  },
+});

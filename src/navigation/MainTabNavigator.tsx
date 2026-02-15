@@ -1,31 +1,33 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { CalendarDaysIcon, UserIcon } from 'react-native-heroicons/outline';
+import {
+  CalendarDaysIcon,
+  CalendarIcon,
+  UserIcon,
+} from 'react-native-heroicons/outline';
 import ProfileScreen from '@/screens/ProfileScreen';
-import { DashboardScreen } from '@/screens/Dashboard';
+import { MonthlyScreen } from '@/screens/MonthlyScreen';
+import { DayScreen } from '@/screens/DayScreen';
 
 const Tab = createBottomTabNavigator();
 
 export function MainTabNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={{ headerShown: false }}
-      // screenOptions={{
-      //   header: ({ route }) => <CustomHeader title={getTitle(route.name)} />,
-      //   tabBarStyle: { /* your nice style */ },
-      //   tabBarActiveTintColor: '#0066FF',
-      //   tabBarInactiveTintColor: '#999',
-      // }}
-    >
+    <Tab.Navigator initialRouteName="Monthly">
       <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
+        name="Monthly"
+        component={MonthlyScreen}
         options={{ tabBarIcon: () => <CalendarDaysIcon /> }}
+      />
+      <Tab.Screen
+        name="Daily"
+        component={DayScreen}
+        options={{ tabBarIcon: () => <CalendarIcon /> }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: () => <UserIcon />, headerShown: true }}
+        options={{ tabBarIcon: () => <UserIcon /> }}
       />
     </Tab.Navigator>
   );

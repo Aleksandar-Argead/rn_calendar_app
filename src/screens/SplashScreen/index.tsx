@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CalendarDaysIcon } from 'react-native-heroicons/outline';
 import { useStore } from '@/store';
@@ -6,19 +6,25 @@ import { useNavigation } from '@react-navigation/native';
 
 export default function SplashScreen() {
   const navigation = useNavigation<any>();
-  const { user, isLoading: authLoading, setLoading } = useStore();
+  const { user, isAuthReady, setLoading } = useStore();
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log(user);
-      setLoading(false);
-      navigation.replace(user ? 'Main' : 'Login');
-    }, 3000);
+    if (!isAuthReady) return;
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+    setLoading(false);
+
+    if (user) {
+      navigation.replace('Main');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      navigation.replace('Login');
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [isAuthReady, user, navigation, setLoading]);
 
   return (
     <View style={[styles.container]}>
