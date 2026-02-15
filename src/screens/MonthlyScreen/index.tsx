@@ -52,12 +52,6 @@ export function MonthlyScreen() {
     setMonths(prev => addMonthsToList(prev, 6));
   };
 
-  const createNewEvent = () => {
-    navigation.navigate('NewEvent', {
-      initialDate: format(selectedDate, 'yyyy-MM-dd'),
-    });
-  };
-
   return (
     <View style={[styles.container]}>
       <MonthCarousel
@@ -68,10 +62,6 @@ export function MonthlyScreen() {
       />
 
       <EventList selectedDate={selectedDate} />
-
-      <TouchableOpacity style={styles.fab} onPress={createNewEvent}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -81,26 +71,5 @@ const styles = StyleSheet.create({
     flex: 1,
     // backgroundColor: '#f8f9fa',
     backgroundColor: 'white',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 32,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  fabText: {
-    color: 'white',
-    fontSize: 36,
-    fontWeight: '300',
   },
 });

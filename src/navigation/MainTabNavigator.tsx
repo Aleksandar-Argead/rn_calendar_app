@@ -8,12 +8,33 @@ import {
 import ProfileScreen from '@/screens/ProfileScreen';
 import { MonthlyScreen } from '@/screens/MonthlyScreen';
 import { DayScreen } from '@/screens/DayScreen';
+import { TouchableOpacity } from 'react-native';
+import { PlusIcon } from 'react-native-heroicons/outline';
+import { useNavigation } from '@react-navigation/native';
 
 const Tab = createBottomTabNavigator();
 
 export function MainTabNavigator() {
+  const navigation = useNavigation<any>();
+  const headerLeft = () => {
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          navigation.navigate('NewEvent');
+        }}
+        style={{ marginLeft: 16 }}
+      >
+        <PlusIcon size={24} color="blue" />
+      </TouchableOpacity>
+    );
+  };
   return (
-    <Tab.Navigator initialRouteName="Monthly">
+    <Tab.Navigator
+      initialRouteName="Monthly"
+      screenOptions={{
+        headerLeft,
+      }}
+    >
       <Tab.Screen
         name="Monthly"
         component={MonthlyScreen}

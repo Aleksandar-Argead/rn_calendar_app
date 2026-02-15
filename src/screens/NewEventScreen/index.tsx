@@ -11,32 +11,15 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
-import { RouteProp } from '@react-navigation/native';
-import { format, isPast, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { useStore } from '@/store';
 
-type RootStackParamList = {
-  NewEvent: { initialDate?: string };
-};
-type NewEventRouteProp = RouteProp<RootStackParamList, 'NewEvent'>;
-
-interface Props {
-  route: NewEventRouteProp;
-}
-
-export default function NewEventScreen({ route }: Props) {
+export default function NewEventScreen() {
   const navigation = useNavigation<any>();
-  const initialDateStr = route.params?.initialDate;
-
-  const { createEvent } = useStore();
-
-  const initialDate = initialDateStr ? parseISO(initialDateStr) : new Date();
+  const { createEvent, selectedDate } = useStore();
 
   const [title, setTitle] = useState('');
-  const [dateTime, setDateTime] = useState(initialDate);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
-
+  const [dateTime, setDateTime] = useState(selectedDate ?? new Date());
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [titleError, setTitleError] = useState(false);
@@ -46,53 +29,34 @@ export default function NewEventScreen({ route }: Props) {
       setTitleError(true);
       return;
     }
-    setTitleError(false);
 
     const eventData = {
       title: title.trim(),
       date: format(dateTime, 'yyyy-MM-dd'),
-      time: format(dateTime, 'HH:mm'), // ← added
-      start: format(dateTime, "yyyy-MM-dd'T'HH:mm:ss"), // ISO format is often useful
+      time: format(dateTime, 'HH:mm'),
+      start: dateTime.toISOString(),
       location: location.trim(),
       description: description.trim(),
     };
 
-    console.log('Creating event:', eventData);
     createEvent(eventData);
-
-    // Reset form
-    setTitle('');
-    setDateTime(new Date());
-    setLocation('');
-    setDescription('');
     navigation.goBack();
   };
 
-  const showDatePicker = () => {
-    setPickerMode('date');
-    setShowPicker(true);
-  };
-
-  const showTimePicker = () => {
-    setPickerMode('time');
-    setShowPicker(true);
-  };
-
-  const onDateTimeChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || dateTime;
-
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
-
-    if (event.type === 'set' || Platform.OS === 'ios') {
-      setDateTime(currentDate);
+  const onDateChange = (_event: any, selected?: Date) => {
+    if (selected) {
+      setDateTime(selected);
     }
   };
 
-  const formattedDate = format(dateTime, 'yyyy-MM-dd');
-  const formattedTime = format(dateTime, 'HH:mm');
-  const isEventInPast = isPast(dateTime);
+  const onTimeChange = (_event: any, selected?: Date) => {
+    if (selected) {
+      // Keep the date part, only update time
+      const newDate = new Date(dateTime);
+      newDate.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setDateTime(newDate);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -102,65 +66,45 @@ export default function NewEventScreen({ route }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>New Event</Text>
 
-        {/* Title */}
         <TextInput
           style={[styles.input, titleError && styles.inputError]}
           placeholder="Event Title *"
           value={title}
           onChangeText={text => {
             setTitle(text);
-            if (titleError) setTitleError(false);
+            setTitleError(false);
           }}
           autoFocus
           placeholderTextColor="#999"
         />
         {titleError && <Text style={styles.errorText}>Title is required</Text>}
 
-        {/* Date */}
-        <TouchableOpacity
-          style={styles.input}
-          onPress={showDatePicker}
-          activeOpacity={0.7}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.dateText}>Date:</Text>
-
+        {/* Date + Time pickers side by side */}
+        <View style={styles.pickerRow}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.pickerLabel}>Date</Text>
             <DateTimePicker
               value={dateTime}
-              mode={'date'}
-              display={'default'}
-              onChange={onDateTimeChange}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
               minimumDate={new Date(2020, 0, 1)}
               maximumDate={new Date(2035, 11, 31)}
-              // Android specific: auto-dismiss on selection
-              {...(Platform.OS === 'android' ? { is24Hour: true } : {})}
             />
           </View>
-        </TouchableOpacity>
 
-        {/* Time */}
-        <TouchableOpacity
-          style={styles.input}
-          onPress={showTimePicker}
-          activeOpacity={0.7}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.dateText}>Time:</Text>
-
+          <View style={styles.pickerContainer}>
+            <Text style={styles.pickerLabel}>Time</Text>
             <DateTimePicker
               value={dateTime}
-              mode={'time'}
-              display={'default'}
-              onChange={onDateTimeChange}
-              minimumDate={new Date(2020, 0, 1)}
-              maximumDate={new Date(2035, 11, 31)}
-              // Android specific: auto-dismiss on selection
-              {...(Platform.OS === 'android' ? { is24Hour: true } : {})}
+              mode="time"
+              display="default"
+              onChange={onTimeChange}
+              is24Hour={Platform.OS === 'android'}
             />
           </View>
-        </TouchableOpacity>
+        </View>
 
-        {/* Location */}
         <TextInput
           style={styles.input}
           placeholder="Location"
@@ -169,7 +113,6 @@ export default function NewEventScreen({ route }: Props) {
           placeholderTextColor="#999"
         />
 
-        {/* Description */}
         <TextInput
           style={[styles.input, styles.description]}
           placeholder="Description"
@@ -180,7 +123,6 @@ export default function NewEventScreen({ route }: Props) {
           placeholderTextColor="#999"
         />
 
-        {/* Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
@@ -198,7 +140,6 @@ export default function NewEventScreen({ route }: Props) {
   );
 }
 
-// Styles remain mostly the same, just a small tweak for clarity
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -214,13 +155,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 28,
     color: '#333',
+    textAlign: 'center',
   },
   input: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#ddd',
   },
@@ -231,12 +173,30 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#ff3b30',
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     marginLeft: 4,
   },
-  dateText: {
-    fontSize: 16,
-    color: '#333',
+  pickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+
+  pickerContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  pickerLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+    marginLeft: 4,
   },
   description: {
     minHeight: 120,
