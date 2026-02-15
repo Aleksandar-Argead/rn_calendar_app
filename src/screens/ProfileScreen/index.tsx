@@ -1,25 +1,21 @@
-// screens/ProfileScreen.tsx
 import { useStore } from '@/store';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ScrollView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// import { useAuth } from '../context/AuthContext';  // ← you'll probably have this
 
 const ProfileScreen = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
   const { user, logout } = useStore();
 
   const handleLogout = () => {
-    Alert.alert('Log out', 'Are you sure?', [
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Log out',
@@ -32,70 +28,92 @@ const ProfileScreen = () => {
     ]);
   };
 
+  const displayName = user?.email?.split('@')[0] || 'User';
+
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.content}>
-        {/* User info card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatarPlaceholder} />
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerSection}>
+          <Text style={styles.greeting}>Hi, {displayName}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
 
-          <Text style={styles.userName}>{user?.uid}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-          <Text style={styles.joinedDate}>
-            Joined: {user?.creationDate?.toDateString()}
-          </Text>
+          {user?.creationDate && (
+            <Text style={styles.joined}>
+              Joined{' '}
+              {user.creationDate.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
+          )}
         </View>
+      </ScrollView>
 
-        {/* Logout – most important button */}
+      <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Log out</Text>
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>App version 1.0.0</Text>
+        <Text style={styles.version}>Version 1.0.0</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  container: {
+    flex: 1,
+    backgroundColor: '#fafafa',
   },
-  headerTitle: { fontSize: 22, fontWeight: '700' },
-  content: { flex: 1, padding: 16 },
-  userCard: {
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e0e0e0',
-    marginBottom: 16,
+  headerSection: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  email: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  joined: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+    backgroundColor: '#fafafa',
   },
   logoutButton: {
-    marginTop: 'auto',
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#ef4444',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
     alignItems: 'center',
+    marginBottom: 12,
   },
-  logoutText: { color: 'white', fontSize: 17, fontWeight: '600' },
-  version: { color: 'gray', opacity: 0.75, fontSize: 12, textAlign: 'center' },
-  // ... other styles
+  logoutText: {
+    color: 'white',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  version: {
+    textAlign: 'center',
+    color: '#9ca3af',
+    fontSize: 12,
+  },
 });

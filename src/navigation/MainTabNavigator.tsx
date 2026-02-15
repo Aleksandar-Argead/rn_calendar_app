@@ -8,7 +8,7 @@ import {
 import ProfileScreen from '@/screens/ProfileScreen';
 import { MonthlyScreen } from '@/screens/MonthlyScreen';
 import { DayScreen } from '@/screens/DayScreen';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { PlusIcon } from 'react-native-heroicons/outline';
 import { useNavigation } from '@react-navigation/native';
 
@@ -48,7 +48,7 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: () => <UserIcon /> }}
+        options={{ tabBarIcon: () => <UserIcon />, headerLeft: () => <View /> }}
       />
     </Tab.Navigator>
   );

@@ -139,7 +139,9 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   // ── Biometrics ─────────────────────────────────────────────
   hasBiometricCredentials: async () => {
     try {
-      const creds = await Keychain.getGenericPassword();
+      const creds = await Keychain.getGenericPassword({
+        accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+      });
       return !!creds;
     } catch {
       return false;
@@ -169,6 +171,8 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           cancel: 'Use password',
         },
       });
+
+      console.log(creds);
       if (!creds?.username || !creds.password) {
         set({ isLoading: false });
         return false;

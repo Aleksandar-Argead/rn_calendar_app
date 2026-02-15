@@ -12,24 +12,20 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { useStore } from '@/store';
 
 export default function EventScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { createEvent, updateEvent, deleteEvent, events } = useStore(); // assuming store has these + events array
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { createEvent, updateEvent, deleteEvent, events } = useStore();
 
   const eventId = route.params?.eventId as string | undefined;
-
-  const existingEvent = eventId
-    ? events.find((e: any) => e.id === eventId)
-    : null;
-
+  const existingEvent = eventId ? events.find(e => e.id === eventId) : null;
   const isEditMode = !!eventId && !!existingEvent;
 
   const initialDateTime = isEditMode
-    ? parseISO(existingEvent.start) // assuming you store ISO string in 'start'
+    ? parseISO(existingEvent.start)
     : (route.params?.selectedDate ?? new Date());
 
   const [title, setTitle] = useState(isEditMode ? existingEvent.title : '');
@@ -42,12 +38,11 @@ export default function EventScreen() {
   );
   const [titleError, setTitleError] = useState(false);
 
-  // Optional: reset error when title changes
   useEffect(() => {
     if (title.trim()) setTitleError(false);
   }, [title]);
 
-  const handleSave = () => {
+  const validateAndSave = () => {
     if (!title.trim()) {
       setTitleError(true);
       return;
@@ -55,8 +50,6 @@ export default function EventScreen() {
 
     const eventData = {
       title: title.trim(),
-      date: format(dateTime, 'yyyy-MM-dd'),
-      time: format(dateTime, 'HH:mm'),
       start: dateTime.toISOString(),
       location: location.trim(),
       description: description.trim(),
@@ -74,7 +67,7 @@ export default function EventScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete Event', 'Are you sure you want to delete this event?', [
+    Alert.alert('Delete Event', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -87,13 +80,11 @@ export default function EventScreen() {
     ]);
   };
 
-  const onDateChange = (_event: any, selected?: Date) => {
-    if (selected) {
-      setDateTime(selected);
-    }
+  const handleDateChange = (_: any, selected?: Date) => {
+    if (selected) setDateTime(selected);
   };
 
-  const onTimeChange = (_event: any, selected?: Date) => {
+  const handleTimeChange = (_: any, selected?: Date) => {
     if (selected) {
       const newDate = new Date(dateTime);
       newDate.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
@@ -129,7 +120,7 @@ export default function EventScreen() {
               value={dateTime}
               mode="date"
               display="default"
-              onChange={onDateChange}
+              onChange={handleDateChange}
               minimumDate={new Date(2020, 0, 1)}
               maximumDate={new Date(2035, 11, 31)}
             />
@@ -141,7 +132,7 @@ export default function EventScreen() {
               value={dateTime}
               mode="time"
               display="default"
-              onChange={onTimeChange}
+              onChange={handleTimeChange}
               is24Hour={Platform.OS === 'android'}
             />
           </View>
@@ -166,40 +157,25 @@ export default function EventScreen() {
         />
 
         <View style={styles.buttonRow}>
-          {isEditMode ? (
-            <>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.buttonTextCancel}>Cancel</Text>
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.buttonTextCancel}>Cancel</Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.button, styles.deleteButton]}
-                onPress={handleDelete}
-              >
-                <Text style={styles.buttonTextDelete}>Delete</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.button} onPress={handleSave}>
-                <Text style={styles.buttonTextCreate}>{primaryButtonText}</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.buttonTextCancel}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.button} onPress={handleSave}>
-                <Text style={styles.buttonTextCreate}>{primaryButtonText}</Text>
-              </TouchableOpacity>
-            </>
+          {isEditMode && (
+            <TouchableOpacity
+              style={[styles.button, styles.deleteButton]}
+              onPress={handleDelete}
+            >
+              <Text style={styles.buttonTextDelete}>Delete</Text>
+            </TouchableOpacity>
           )}
+
+          <TouchableOpacity style={styles.button} onPress={validateAndSave}>
+            <Text style={styles.buttonTextCreate}>{primaryButtonText}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

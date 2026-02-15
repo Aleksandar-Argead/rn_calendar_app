@@ -32,14 +32,14 @@ export default function LoginScreen() {
   // Check if biometrics are possible & saved
   useEffect(() => {
     (async () => {
-      // const hasCreds = await hasBiometricCredentials();
-      // setBiometricsAvailable(hasCreds);
-      // if (hasCreds) {
-      //   const success = await loginWithBiometrics();
-      //   if (!success) {
-      //     setError(null); // clear previous error if biometrics cancelled
-      //   }
-      // }
+      const hasCreds = await hasBiometricCredentials();
+      setBiometricsAvailable(hasCreds);
+      if (hasCreds) {
+        const success = await loginWithBiometrics();
+        if (!success) {
+          setError(null); // clear previous error if biometrics cancelled
+        }
+      }
     })();
   }, []);
 
