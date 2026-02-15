@@ -1,4 +1,6 @@
 // screens/ProfileScreen.tsx
+import { useStore } from '@/store';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
   View,
@@ -12,9 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // import { useAuth } from '../context/AuthContext';  // ← you'll probably have this
 
 const ProfileScreen = () => {
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-
-  // const { user, logout } = useAuth();  // ← typical pattern
+  const { user, logout } = useStore();
 
   const handleLogout = () => {
     Alert.alert('Log out', 'Are you sure?', [
@@ -23,8 +25,8 @@ const ProfileScreen = () => {
         text: 'Log out',
         style: 'destructive',
         onPress: () => {
-          // logout();
-          // navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          logout();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         },
       },
     ]);
@@ -32,36 +34,16 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
-
       <View style={styles.content}>
         {/* User info card */}
         <View style={styles.userCard}>
           <View style={styles.avatarPlaceholder} />
 
-          <Text style={styles.userName}>John Doe</Text>
-          <Text style={styles.userEmail}>john.doe@example.com</Text>
-          <Text style={styles.joinedDate}>Joined: January 2025</Text>
-        </View>
-
-        {/* Menu items / options */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Edit profile</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Change password</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Notifications</Text>
-          </TouchableOpacity>
+          <Text style={styles.userName}>{user?.uid}</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={styles.joinedDate}>
+            Joined: {user?.creationDate?.toDateString()}
+          </Text>
         </View>
 
         {/* Logout – most important button */}
@@ -114,5 +96,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutText: { color: 'white', fontSize: 17, fontWeight: '600' },
+  version: { color: 'gray', opacity: 0.75, fontSize: 12, textAlign: 'center' },
   // ... other styles
 });

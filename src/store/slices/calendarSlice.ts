@@ -1,65 +1,45 @@
 import { StateCreator } from 'zustand';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {
-  startOfMonth,
-  endOfMonth,
-  addMonths,
-  subMonths,
-  isSameMonth,
-  isToday,
-} from 'date-fns';
-
-// ── Types ──────────────────────────────────────────────────────────────
+import { startOfDay, isToday } from 'date-fns';
 
 export type CalendarEvent = {
-  id: string; // Firestore document ID
+  id: string;
   title: string;
   description?: string;
-  start: string; // ISO string e.g. "2026-02-15T10:00:00Z"
-  end?: string; // ISO string or null
+  start: string; // ISO "2026-02-15T10:00:00Z"
+  end?: string;
   allDay?: boolean;
-  createdAt: string; // ISO
-  updatedAt?: string; // ISO
-  // color?: string;             // optional later
+  createdAt: string;
+  updatedAt?: string;
 };
 
 export type CalendarView = 'month' | 'day';
 
 export interface CalendarSlice {
-  // ── State ────────────────────────────────────────────────────────────
   currentDate: Date;
   view: CalendarView;
   selectedDate: Date;
-
   events: CalendarEvent[];
   isLoadingEvents: boolean;
   eventsError: string | null;
 
-  // ── Actions ──────────────────────────────────────────────────────────
   setCurrentDate: (date: Date) => void;
   setView: (view: CalendarView) => void;
   setSelectedDate: (date: Date) => void;
-
-  goToNext: () => void;
-  goToPrev: () => void;
   goToToday: () => void;
-
-  fetchEvents: () => Promise<void>;
+  fetchAllEvents: () => Promise<void>;
   createEvent: (
     data: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>,
   ) => Promise<boolean>;
   updateEvent: (
     id: string,
-    updates: Partial<Omit<CalendarEvent, 'id' | 'createdAt'>>,
+    updates: Partial<Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>>,
   ) => Promise<boolean>;
   deleteEvent: (id: string) => Promise<boolean>;
-
-  // Optional helper — call after login or on mount
   initializeCalendar: () => Promise<void>;
 }
 
-// Helper to get the events subcollection reference
 const getEventsRef = () => {
   const uid = auth().currentUser?.uid;
   if (!uid) throw new Error('No authenticated user');
@@ -67,81 +47,35 @@ const getEventsRef = () => {
 };
 
 export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
-  // ── Initial state ────────────────────────────────────────────────────
   currentDate: new Date(),
   view: 'month',
   selectedDate: new Date(),
-
   events: [],
   isLoadingEvents: false,
   eventsError: null,
 
-  // ── Navigation ───────────────────────────────────────────────────────
   setCurrentDate: date => set({ currentDate: date }),
   setView: view => set({ view }),
   setSelectedDate: date => set({ selectedDate: date }),
 
-  goToNext: () => {
-    const { currentDate, view } = get();
-    const newDate =
-      view === 'month'
-        ? addMonths(currentDate, 1)
-        : new Date(currentDate.setDate(currentDate.getDate() + 1));
-    set({ currentDate: newDate });
-    // Auto-fetch if month changed
-    if (view === 'month' && !isSameMonth(newDate, currentDate)) {
-      get().fetchEvents();
-    }
-  },
-
-  goToPrev: () => {
-    const { currentDate, view } = get();
-    const newDate =
-      view === 'month'
-        ? subMonths(currentDate, 1)
-        : new Date(currentDate.setDate(currentDate.getDate() - 1));
-    set({ currentDate: newDate });
-    if (view === 'month' && !isSameMonth(newDate, currentDate)) {
-      get().fetchEvents();
-    }
-  },
-
   goToToday: () => {
     const today = new Date();
     set({ currentDate: today, selectedDate: today });
-    if (get().view === 'month') {
-      get().fetchEvents();
-    }
   },
 
-  // ── Data fetching ────────────────────────────────────────────────────
-  fetchEvents: async () => {
-    const { currentDate, view } = get();
-    if (view === 'day') {
-      // For day view you could fetch only that day — but keeping month range for simplicity
-      // You can optimize later
-    }
-
+  fetchAllEvents: async () => {
     set({ isLoadingEvents: true, eventsError: null });
-
     try {
-      const monthStart = startOfMonth(currentDate);
-      const monthEnd = endOfMonth(currentDate);
+      const snap = await getEventsRef().orderBy('start').get();
 
-      const snap = await getEventsRef()
-        .where('start', '>=', monthStart.toISOString())
-        .where('start', '<=', monthEnd.toISOString())
-        .orderBy('start')
-        .get();
-
-      const loadedEvents = snap.docs.map(doc => ({
+      const loaded = snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as CalendarEvent[];
 
-      set({ events: loadedEvents, isLoadingEvents: false });
+      set({ events: loaded, isLoadingEvents: false });
     } catch (err: any) {
-      console.error('fetchEvents failed:', err);
+      console.error('fetchAllEvents failed:', err);
       set({
         eventsError: err.message || 'Failed to load events',
         isLoadingEvents: false,
@@ -149,7 +83,6 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
     }
   },
 
-  // ── CRUD ─────────────────────────────────────────────────────────────
   createEvent: async data => {
     try {
       const now = new Date().toISOString();
@@ -159,7 +92,6 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
         updatedAt: now,
       });
 
-      // Optimistic UI update
       set(state => ({
         events: [
           ...state.events,
@@ -171,7 +103,6 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
           } as CalendarEvent,
         ],
       }));
-
       return true;
     } catch (err: any) {
       console.error('createEvent failed:', err);
@@ -185,18 +116,13 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
       const now = new Date().toISOString();
       await getEventsRef()
         .doc(id)
-        .update({
-          ...updates,
-          updatedAt: now,
-        });
+        .update({ ...updates, updatedAt: now });
 
-      // Optimistic update
       set(state => ({
         events: state.events.map(ev =>
           ev.id === id ? { ...ev, ...updates, updatedAt: now } : ev,
         ),
       }));
-
       return true;
     } catch (err: any) {
       console.error('updateEvent failed:', err);
@@ -209,11 +135,9 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
     try {
       await getEventsRef().doc(id).delete();
 
-      // Optimistic remove
       set(state => ({
         events: state.events.filter(ev => ev.id !== id),
       }));
-
       return true;
     } catch (err: any) {
       console.error('deleteEvent failed:', err);
@@ -222,8 +146,7 @@ export const createCalendarSlice: StateCreator<CalendarSlice> = (set, get) => ({
     }
   },
 
-  // ── Lifecycle helper (call after successful login) ───────────────────
   initializeCalendar: async () => {
-    await get().fetchEvents();
+    await get().fetchAllEvents();
   },
 });

@@ -14,6 +14,7 @@ export default function RootNavigator() {
   useEffect(() => {
     // Listen to Firebase auth changes → update store
     const subscriber = getAuth().onAuthStateChanged(firebaseUser => {
+      console.log('loggedin', firebaseUser);
       if (firebaseUser) {
         useStore.setState({
           user: {

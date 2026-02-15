@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { isToday, isSameDay } from 'date-fns';
+import { isToday } from 'date-fns';
 
 type Props = {
   date: Date | null; // null = padding day from prev/next month
   isCurrentMonth: boolean;
-  selectedDate: Date;
   hasEvents: boolean;
+  isSelected: boolean;
   onPress: (date: Date) => void;
 };
 
 export function DayCell({
   date,
   isCurrentMonth,
-  selectedDate,
+  isSelected,
   hasEvents,
   onPress,
 }: Props) {
@@ -22,7 +22,7 @@ export function DayCell({
   }
 
   const today = isToday(date);
-  const selected = isSameDay(date, selectedDate);
+  const selected = isSelected;
   const textColor = isCurrentMonth ? '#000' : '#aaa';
 
   return (

@@ -25,7 +25,7 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: () => <UserIcon /> }}
+        options={{ tabBarIcon: () => <UserIcon />, headerShown: true }}
       />
     </Tab.Navigator>
   );
