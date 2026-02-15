@@ -13,7 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '@/store';
 
-export default function Login() {
+export default function LoginScreen() {
   const navigation = useNavigation<any>();
 
   const {
@@ -122,6 +122,7 @@ export default function Login() {
           onChangeText={setPassword}
           secureTextEntry
           autoCapitalize="none"
+          placeholderTextColor="#999"
         />
 
         {isLoading ? (

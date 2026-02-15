@@ -5,14 +5,14 @@ import SplashScreen from '@/screens/SplashScreen';
 import { useStore } from '@/store';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getAuth } from '@react-native-firebase/auth';
-import Login from '@/screens/Login';
 import { MainTabNavigator } from './MainTabNavigator';
+import RegisterScreen from '@/screens/RegisterScreen';
+import LoginScreen from '@/screens/LoginScreen';
 
 const RootStack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   useEffect(() => {
-    // Listen to Firebase auth changes → update store
     const subscriber = getAuth().onAuthStateChanged(firebaseUser => {
       console.log('loggedin', firebaseUser);
       if (firebaseUser) {
@@ -20,12 +20,8 @@ export default function RootNavigator() {
           user: {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
+            creationDate: null,
           },
-          isLoading: false,
-        });
-      } else {
-        useStore.setState({
-          user: null,
           isLoading: false,
         });
       }
@@ -41,7 +37,8 @@ export default function RootNavigator() {
         screenOptions={{ headerShown: false }}
       >
         <RootStack.Screen name="Splash" component={SplashScreen} />
-        <RootStack.Screen name="Login" component={Login} />
+        <RootStack.Screen name="Login" component={LoginScreen} />
+        <RootStack.Screen name="Register" component={RegisterScreen} />
         <RootStack.Screen name="Main" component={MainTabNavigator} />
       </RootStack.Navigator>
     </NavigationContainer>
