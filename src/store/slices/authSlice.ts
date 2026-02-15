@@ -1,6 +1,11 @@
 import { StateCreator } from 'zustand';
 import auth from '@react-native-firebase/auth';
 import * as Keychain from 'react-native-keychain';
+import {
+  FieldValue,
+  getFirestore,
+  serverTimestamp,
+} from '@react-native-firebase/firestore';
 
 export type User = {
   uid: string;
@@ -35,7 +40,7 @@ export interface AuthSlice {
 // ── slice creator ───────────────────────────────────────────
 export const createAuthSlice: StateCreator<AuthSlice> = (set, _get) => ({
   user: null,
-  isLoading: true, // start as true → we check auth state
+  isLoading: true,
   authError: null,
 
   setUser: user => set({ user }),
@@ -45,6 +50,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, _get) => ({
   signInWithEmail: async (email, password) => {
     set({ isLoading: true, authError: null });
     try {
+      console.log(email, password);
       const credential = await auth().signInWithEmailAndPassword(
         email,
         password,
@@ -56,8 +62,68 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, _get) => ({
       });
       return true;
     } catch (err: any) {
-      const msg = err.message || 'Sign in failed';
+      console.log(err.message);
+      const msg = 'Sign in failed';
       set({ authError: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  fetchUser: async () => {
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      set({ user: null, isLoading: false });
+      return false;
+    }
+
+    try {
+      const doc = await getFirestore()
+        .collection('users')
+        .doc(currentUser.uid)
+        .get();
+
+      if (!doc.exists) {
+        // Document doesn't exist yet → create minimal one (optional)
+        await getFirestore().collection('users').doc(currentUser.uid).set(
+          {
+            email: currentUser.email,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        // Re-fetch
+        const newDoc = await getFirestore()
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+        set({
+          user: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            ...newDoc.data(),
+          } as User,
+          isLoading: false,
+        });
+        return true;
+      }
+
+      set({
+        user: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          ...doc.data(),
+        } as User,
+        isLoading: false,
+      });
+      return true;
+    } catch (err: any) {
+      console.error('fetchUser error:', err);
+      set({
+        authError: 'Failed to load user profile',
+        isLoading: false,
+      });
       return false;
     }
   },

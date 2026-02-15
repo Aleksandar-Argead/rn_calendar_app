@@ -32,15 +32,14 @@ export default function Login() {
   // Check if biometrics are possible & saved
   useEffect(() => {
     (async () => {
-      const hasCreds = await hasBiometricCredentials();
-      setBiometricsAvailable(hasCreds);
-
-      if (hasCreds) {
-        const success = await loginWithBiometrics();
-        if (!success) {
-          setError(null); // clear previous error if biometrics cancelled
-        }
-      }
+      // const hasCreds = await hasBiometricCredentials();
+      // setBiometricsAvailable(hasCreds);
+      // if (hasCreds) {
+      //   const success = await loginWithBiometrics();
+      //   if (!success) {
+      //     setError(null); // clear previous error if biometrics cancelled
+      //   }
+      // }
     })();
   }, []);
 
@@ -91,6 +90,7 @@ export default function Login() {
         );
       }
       // Navigation happens automatically via RootNavigator (user becomes truthy)
+      navigation.replace('Main');
     } else {
       Alert.alert('Login Failed', authError || 'Something went wrong');
     }
