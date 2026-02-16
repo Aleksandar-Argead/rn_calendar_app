@@ -12,7 +12,7 @@ import {
 
 const ProfileScreen = () => {
   const navigation = useNavigation<any>();
-  const { user, logout } = useStore();
+  const { user, signOut } = useStore();
 
   const handleLogout = () => {
     Alert.alert('Log out', 'Are you sure you want to log out?', [
@@ -21,7 +21,7 @@ const ProfileScreen = () => {
         text: 'Log out',
         style: 'destructive',
         onPress: () => {
-          logout();
+          signOut();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         },
       },

@@ -10,6 +10,7 @@ export default function SplashScreen() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    console.log(isAuthReady, user);
     if (!isAuthReady) return;
 
     setLoading(false);
@@ -25,6 +26,15 @@ export default function SplashScreen() {
 
     return () => clearTimeout(timer);
   }, [isAuthReady, user, navigation, setLoading]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+      navigation.replace('Login');
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={[styles.container]}>
